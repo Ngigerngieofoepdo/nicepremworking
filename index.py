@@ -6,6 +6,10 @@ import asyncio
 from threading import Thread
 import time
 
+# Get token and channel ID from environment variables
+DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
+CHANNEL_ID = os.getenv("CHANNEL_ID")
+
 app = Flask(__name__)
 pet_servers = []
 
@@ -37,7 +41,7 @@ def parse_pet_embed(embed):
         elif "JOBID" in field.name:
             jobId = field.value.strip()
         elif "Join Script" in field.name:
-            m = re.search(r'TeleportToPlaceInstance`\((\d+),\s*"([\w-]+)', field.value)
+            m = re.search(r'TeleportToPlaceInstance\((\d+),\s*"([\w-]+)', field.value)
             if m:
                 placeId = m.group(1)
                 jobId2 = m.group(2)
@@ -63,7 +67,7 @@ class PetClient(discord.Client):
         print(f'Logged in as {self.user}')
 
     async def on_message(self, message):
-        if message.channel.id != int(os.getenv("CHANNEL_ID")):
+        if message.channel.id != int(CHANNEL_ID):
             return
 
         for embed in message.embeds:
@@ -82,13 +86,12 @@ def recent_pets():
     filtered = [p for p in pet_servers if now - p["timestamp"] < 900]
     return jsonify(filtered)
 
-# Vercel serverless function handler
 def handler(event, context):
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     client = PetClient(intents=discord.Intents.default())
     client.intents.message_content = True
-    Thread(target=client.run, args=(os.getenv("DISCORD_TOKEN"),), daemon=True).start()
+    Thread(target=client.run, args=(DISCORD_TOKEN,), daemon=True).start()
     return app(event, context)
 
 if __name__ == "__main__":
