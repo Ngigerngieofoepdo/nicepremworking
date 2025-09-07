@@ -86,13 +86,18 @@ def recent_pets():
     filtered = [p for p in pet_servers if now - p["timestamp"] < 900]
     return jsonify(filtered)
 
-def handler(event, context):
+# Start Discord client in a separate thread
+def start_discord():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     client = PetClient(intents=discord.Intents.default())
     client.intents.message_content = True
-    Thread(target=client.run, args=(DISCORD_TOKEN,), daemon=True).start()
-    return app(event, context)
+    client.run(DISCORD_TOKEN)
 
-if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=8080)
+# Run Discord client in background
+Thread(target=start_discord, daemon=True).start()
+
+# Vercel serverless function handler
+def handler(event, context):
+    from wsgiref.handlers import CGIHandler
+    return CGIHandler().run(app)
